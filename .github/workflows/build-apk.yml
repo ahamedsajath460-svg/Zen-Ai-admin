@@ -5,6 +5,7 @@ on:
     paths:
       - '**/*.zip'
       - '*.zip'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
@@ -26,7 +27,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Find ZIP uploaded in this commit
+      - name: Find ZIP (this commit first, else latest ZIP in repo)
         id: archive
         shell: bash
         run: |
@@ -34,16 +35,15 @@ jobs:
           ZIP_PATH="$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" \
             | grep -Ei '\.zip$' | head -n 1 || true)"
           if [[ -z "$ZIP_PATH" ]]; then
-            mapfile -t ZIPS < <(find . -maxdepth 4 -type f -iname '*.zip' -not -path './.git/*' | sort)
-            if [[ "${#ZIPS[@]}" -eq 1 ]]; then
-              ZIP_PATH="${ZIPS[0]}"
-            else
-              echo "Upload exactly one project ZIP per commit."
-              printf '%s\n' "${ZIPS[@]}"
-              exit 1
-            fi
+            # Workflow-only change: use the most recently committed ZIP
+            ZIP_PATH="$(git log --diff-filter=AM --name-only --pretty=format: -- '*.zip' '**/*.zip' \
+              | grep -Ei '\.zip$' | head -n 1 || true)"
           fi
-          test -f "$ZIP_PATH"
+          if [[ -z "$ZIP_PATH" || ! -f "$ZIP_PATH" ]]; then
+            echo "No project ZIP found in the repository. Upload one ZIP and push."
+            exit 1
+          fi
+          echo "Using ZIP: $ZIP_PATH"
           echo "zip_path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java 17
