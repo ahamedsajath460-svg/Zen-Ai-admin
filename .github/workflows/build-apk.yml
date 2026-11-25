@@ -6,6 +6,7 @@ on:
       - '**/*.zip'
       - '*.zip'
       - '.github/workflows/**'
+      - 'trigger-build.txt'
   workflow_dispatch:
 
 permissions:
@@ -107,7 +108,7 @@ jobs:
       - name: Build signed Release APK
         working-directory: ${{ steps.project.outputs.project_dir }}
         env:
-          KEYSTORE_PATH: my-upload-key.jks
+          KEYSTORE_PATH: ${{ steps.project.outputs.project_dir }}/my-upload-key.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
